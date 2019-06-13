@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: zuul1-practice
+  cloud:
+    config:
+      uri: http://localhost:8888 # default
+      fail-fast: true
+      enabled: false
+  profiles:
+    active: default

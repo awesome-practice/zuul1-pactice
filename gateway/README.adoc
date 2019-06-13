@@ -1,0 +1,45 @@
+== test case
+
+[source]
+----
+$ curl 'localhost:8094/books/test/sleep/0'
+$ curl 'localhost:8094/schools/test/sleep/0'
+$ curl 'localhost:8094/trigger/semaphoreMetric'
+$ curl -XPOST 'localhost:8094/actuator/refresh'
+----
+
+
+== semaphore 结论
+=== semaphore配置优先级
+.概括
+hystrix.<serviceId>中的配置, 优先于zuul中的hystrix配置, 后者优先于hystrix.default配置
+
+.zuul中涉及hystrix的配置项：
+* `zuul.ribbon-isolation-strategy`
+* `zuul.semaphore.max-semaphores`
+* `zuul.eureka.<serviceId>.semaphore.maxSemaphores`
+
+.maxConcurrentRequests配置优先级(优先级从上到下依次降低):
+[options="header,footer"]
+|=====
+|hystrix.command.<serviceId>.execution.semaphore.maxConcurrentRequests|
+|zuul.eureka.<serviceId>.semaphore.maxSemaphores	 |不建议用, 无默认值. 消费处: org.springframework.cloud.netflix.zuul.filters.route.support.AbstractRibbonCommand#getSetter
+|zuul.semaphore.max-semaphores |有默认值
+|hystrix.command.default.execution.semaphore.maxConcurrentRequests	|无默认值
+|=====
+
+.isolation.strategy配置优先级(优先级从上到下依次降低):
+. hystrix.command.books.execution.isolation.strategy
+. zuul.ribbon-isolation-strategy
+. hystrix.command.default.execution.isolation.strategy
+
+=== 其他配置优先级
+* ribbon空间的配置不受zuul覆盖
+* semaphore不够则熔断
+* zuul下的max-semaphores应用于各个微服务(应该不分实例),每个微服务取它作为hytrix的semaphore.maxConcurrentRequests
+* ribbon空间的配置不受覆盖
+
+=== semaphore动态更新
+* 配置中心动态刷新semaphore有效
+* classpath中动态更新semaphore有效
+

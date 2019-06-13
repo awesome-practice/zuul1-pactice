@@ -1,0 +1,152 @@
+server:
+  port: 8094
+  tomcat:
+    max-threads: 200
+    min-spare-threads: 10
+    basedir: tomcat.${spring.application.name}.${server.port}
+    remote-ip-header: X-Forwarded-For
+    port-header: X-Forwarded-Port
+    protocol-header: X-Forwarded-Proto
+    accesslog:
+      enabled: true
+      rename-on-rotate: true
+      request-attributes-enabled: true
+      pattern: '{"p":%p,"clientPort":%{remote}p,"RemoteServerPort":%{org.apache.catalina.AccessLog.ServerPort}r,"RemoteProtocol":"%{org.apache.catalina.AccessLog.Protocol}r","Content-Type":"%{Content-Type}i","RemoteAddr":"%{org.apache.catalina.AccessLog.RemoteAddr}r","a":"%a","B":%B,"m":"%m","q":"%q","s":%s,"t":"%t","U":"%U","D":%D,"F":%F,"I":"%I","X":"%X"}'
+  servlet:
+    path: /
+    context-path:
+
+zuul:
+  retryable: true
+  ribbon-isolation-strategy: SEMAPHORE # default to SEMAPHORE in zuul; prior to hystrix.command.default.execution.isolation.strategy
+  semaphore:
+    max-semaphores: 30  # default to 100; prior to hystrix.command.books.execution.isolation.semaphore.maxConcurrentRequests
+  eureka:
+    books:
+      semaphore:
+        maxSemaphores: 1 # no default; not suggested to use. priority is lower than zuul.eureka.<serviceId>.semaphore.maxSemaphores
+  servlet-path: /upload
+  host:
+    max-per-route-connections: 20
+    max-total-connections: 200
+  routes:
+    manual_assigned_servers_route:
+      path: /manual/**
+      serviceId: manual_assigned_servers
+    books_route:
+      path: /books/**
+      serviceId: books
+      stripPrefix: true
+    schools_route:
+      path: /schools/**
+      serviceId: schools
+      stripPrefix: true
+    httpbin_route:
+      path: /httpbin/**
+      url: http://httpbin.org
+
+manual_assigned_servers:
+  ribbon:
+    NIWSServerListClassName: com.netflix.loadbalancer.ConfigurationBasedServerList
+    #    listOfServers: http://localhost:8090,http://localhost:8091
+    listOfServers: https://httpbin.org
+    ConnectTimeout: 1000
+    ReadTimeout: 3000
+    MaxTotalHttpConnections: 500
+    MaxConnectionsPerHost: 100
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8093/eureka/
+    enabled: true
+
+spring:
+  redis:
+    cluster:
+      nodes: 192.168.60.199:7001,192.168.60.199:7002,192.168.60.199:7003
+    lettuce:
+      pool:
+        max-wait: 3000ms
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+
+hystrix:
+  command:
+    default:
+      circuitBreaker:
+        requestVolumeThreshold: 10 #default to 20
+        errorThresholdPercentage: 20 #default to 50
+        sleepWindowInMilliseconds: 1000 #default to 5000
+      execution:
+        timeout:
+          enabled: false
+        isolation:
+          strategy: SEMAPHORE #default to THREAD in hystrix; priority lower than zuul.ribbon-isolation-strategy
+          semaphore:
+            maxConcurrentRequests: 11 #default to 10; priority lower than zuul.semaphore.max-semaphores
+      fallback:
+        isolation:
+          semaphore:
+            maxConcurrentRequests: 11 #default to 10; should be larger than hystrix.command.default.execution.isolation.semaphore.maxConcurrentRequests
+    books:
+      execution:
+        isolation:
+          strategy: SEMAPHORE #prior to zuul.ribbon-isolation-strategy
+          semaphore:
+            maxConcurrentRequests: 3 # prior to zuul.eureka.<serviceId>.semaphore.max-semaphores
+      fallback:
+        isolation:
+          semaphore:
+            maxConcurrentRequests: 23
+    schools:
+      execution:
+        isolation:
+          semaphore:
+            maxConcurrentRequests: 21
+      fallback:
+        isolation:
+          semaphore:
+            maxConcurrentRequests: 21
+
+ribbon:
+  ReadTimeout: 3000
+  ConnectTimeout: 500
+  MaxAutoRetries: 0
+  MaxAutoRetriesNextServer: 1
+
+books:
+  ribbon:
+    ReadTimeout: -1
+    ConnectTimeout: 1000
+    MaxAutoRetries: 0
+    MaxAutoRetriesNextServer: 1
+
+# rate limit [[[[[
+redis-rate-limiter:
+  replenishRate: 5
+  burstCapacity: 5
+#  ]]]]] rate limit
+
+
+logging:
+  level:
+    root: warn
+    com.practice.zuul1: info
+    com.practice.zuul1.gateway: debug
+    com.netflix.ribbon: debug
+    com.netflix.hystrix: debug
+    com.netflix.loadbalancer: info
+    org.springframework.cloud.netflix.ribbon: debug
+    org.springframework.cloud.netflix.hystrix: debug
+    org.springframework.retry: debug
+
+management:
+  endpoint:
+    health:
+      show-details: always
+  endpoints:
+    web:
+      exposure:
+        include: "*"

@@ -1,0 +1,30 @@
+server:
+  port: 8090
+  tomcat:
+    basedir: tomcat.${spring.application.name}.${server.port}
+    remote-ip-header: X-Forwarded-For
+    port-header: X-Forwarded-Port
+    protocol-header: X-Forwarded-Proto
+    accesslog:
+      enabled: true
+      rename-on-rotate: true
+      request-attributes-enabled: true
+      pattern: '{"p":%p,"clientPort":%{remote}p,"RemoteServerPort":%{org.apache.catalina.AccessLog.ServerPort}r,"RemoteProtocol":"%{org.apache.catalina.AccessLog.Protocol}r","Content-Type":"%{Content-Type}i","RemoteAddr":"%{org.apache.catalina.AccessLog.RemoteAddr}r","a":"%a","B":%B,"m":"%m","q":"%q","s":%s,"t":"%t","U":"%U","D":%D,"F":%F,"I":"%I","X":"%X"}'
+
+spring:
+  application:
+    name: books
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8093/eureka/
+#      defaultZone: http://54.196.232.234:1111/eureka/
+management:
+  endpoint:
+    health:
+      show-details: always
+  endpoints:
+    web:
+      exposure:
+        include: "*"
